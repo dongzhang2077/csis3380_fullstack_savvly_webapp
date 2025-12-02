@@ -252,7 +252,6 @@ Budget Schema (budgets collection):
   userId: String (required, indexed),
   category: String (required),
   amount: Number (required, min: 0),
-  spent: Number (default: 0),
   month: Number (1-12, required),
   year: Number (min: 2000, required),
   rolloverType: String (enum: ['full', 'partial', 'none', 'goal']),
@@ -269,6 +268,10 @@ Transaction Schema (transactions collection):
   isIncome: Boolean (default: false),
   date: Date (default: now),
   notes: String,
+  budgetId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Budget'
+  },
   timestamps: true
 }
 
@@ -374,4 +377,27 @@ RUBRIC COMPLIANCE CHECKLIST
 
 PROJECT STATUS: ✅ COMPLETE & READY FOR SUBMISSION
 
-Last Updated: November 22, 2025
+Last Updated: December 2, 2025
+
+## 🎯 BUDGET-TRANSACTION RELATIONSHIP IMPLEMENTATION
+
+### Recent Major Enhancement
+- **Implemented Foreign Key Relationship**: Added `budgetId` field to Transaction model
+- **Transaction-Driven Calculations**: All spending metrics now calculated from actual transaction data
+- **Eliminated Data Duplication**: Removed redundant `spent` field from Budget model
+- **Enhanced User Experience**: Budget selection dropdown in transaction form
+- **Improved System Stability**: Protected exchange rate interface from invalid inputs
+
+### Technical Details
+- **Backend**: Transaction model now references Budget via ObjectId
+- **Frontend**: Dashboard and Budgets pages calculate actual spent from transaction data
+- **API**: Transaction creation supports budget association
+- **Data Consistency**: Real-time synchronization between budgets and transactions
+
+### Benefits Achieved
+1. **Accurate Budget Tracking**: Spending calculated from actual transactions
+2. **Real-time Updates**: Dashboard reflects current financial status
+3. **Clean Architecture**: No redundant data fields
+4. **User-Friendly Interface**: Easy budget-transaction association
+5. **System Reliability**: Protected against invalid inputs
+
