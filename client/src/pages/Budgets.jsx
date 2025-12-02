@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { deleteBudget, getBudgets } from "../services/api";
+import { deleteBudget, getBudgets, getTransactions } from "../services/api";
 
 const getInitialFilters = () => {
   const now = new Date();
@@ -24,6 +24,7 @@ const getRolloverPill = (type = "NONE") =>
 const Budgets = () => {
   const [filters, setFilters] = useState(getInitialFilters);
   const [budgets, setBudgets] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,8 +33,12 @@ const Budgets = () => {
     setError("");
 
     try {
-      const data = await getBudgets(filters);
-      setBudgets(data);
+      const [budgetData, transactionData] = await Promise.all([
+        getBudgets(filters),
+        getTransactions({ limit: 1000 }), // Get all transactions for accurate calculation
+      ]);
+      setBudgets(budgetData);
+      setTransactions(transactionData);
     } catch (err) {
       setError(err.message || "Failed to load budgets");
     } finally {
@@ -143,17 +148,24 @@ const Budgets = () => {
                     <th>Category</th>
                     <th style={{ width: "40%" }}>Progress</th>
                     <th className="text-end">Budgeted</th>
-                    <th className="text-end">Spent</th>
                     <th className="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {budgets.map((budget) => {
+                    // Calculate actual spent from transactions
+                    const budgetTransactions = transactions.filter(
+                      (txn) => txn.budgetId === budget._id && !txn.isIncome
+                    );
+                    const actualSpent = budgetTransactions.reduce(
+                      (sum, txn) => sum + txn.amount,
+                      0
+                    );
                     const percentage = Math.min(
-                      (budget.spent / budget.amount) * 100,
+                      (actualSpent / budget.amount) * 100,
                       100
                     );
-                    const isOverspent = budget.spent > budget.amount;
+                    const isOverspent = actualSpent > budget.amount;
                     return (
                       <tr key={budget._id}>
                         <td>
@@ -206,15 +218,6 @@ const Budgets = () => {
                         </td>
                         <td className="text-end fw-semibold">
                           {formatCurrency(budget.amount)}
-                        </td>
-                        <td className="text-end">
-                          <span
-                            className={
-                              isOverspent ? "text-danger fw-semibold" : ""
-                            }
-                          >
-                            {formatCurrency(budget.spent)}
-                          </span>
                         </td>
                         <td>
                           <div className="d-flex gap-1 justify-content-center">

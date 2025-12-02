@@ -7,7 +7,6 @@ const getInitialForm = () => {
   return {
     category: "",
     amount: "",
-    spent: 0,
     month: now.getMonth() + 1,
     year: now.getFullYear(),
     rolloverType: "full",
@@ -34,7 +33,6 @@ const BudgetForm = () => {
         setForm({
           category: data.category,
           amount: data.amount,
-          spent: data.spent,
           month: data.month,
           year: data.year,
           rolloverType: data.rolloverType,
@@ -63,7 +61,6 @@ const BudgetForm = () => {
     const payload = {
       ...form,
       amount: Number(form.amount),
-      spent: Number(form.spent),
       month: Number(form.month),
       year: Number(form.year),
     };
@@ -120,23 +117,6 @@ const BudgetForm = () => {
                     step="0.01"
                     className="form-control"
                     value={form.amount}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label">Spent To Date</label>
-                <div className="input-group">
-                  <span className="input-group-text">$</span>
-                  <input
-                    name="spent"
-                    type="number"
-                    step="0.01"
-                    className="form-control"
-                    value={form.spent}
                     onChange={handleChange}
                     required
                     min="0"

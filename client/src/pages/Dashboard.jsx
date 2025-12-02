@@ -66,11 +66,12 @@ const Dashboard = () => {
       (item) => (item.actualSpent || 0) > item.amount
     ).length;
 
-    const inflow = transactions
+    // Calculate transaction-based stats
+    const transactionInflow = transactions
       .filter((txn) => txn.isIncome)
       .reduce((sum, txn) => sum + txn.amount, 0);
 
-    const outflow = transactions
+    const transactionOutflow = transactions
       .filter((txn) => !txn.isIncome)
       .reduce((sum, txn) => sum + txn.amount, 0);
 
@@ -79,9 +80,9 @@ const Dashboard = () => {
       totalSpent,
       remaining: totalBudgeted - totalSpent,
       overspentCount,
-      inflow,
-      outflow,
-      netFlow: inflow - outflow,
+      inflow: transactionInflow,
+      outflow: transactionOutflow,
+      netFlow: transactionInflow - transactionOutflow,
       budgetProgress: totalBudgeted
         ? Math.min((totalSpent / totalBudgeted) * 100, 100)
         : 0,

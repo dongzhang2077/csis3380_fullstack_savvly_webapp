@@ -35,12 +35,7 @@ router.post("/", async (req, res) => {
       budgetId: budgetId || null,
     });
 
-    // Auto-update corresponding budget's spent field
-    if (budgetId && !transactionData.isIncome) {
-      await Budget.findByIdAndUpdate(budgetId, {
-        $inc: { spent: transactionData.amount },
-      });
-    }
+    // Note: spent field removed from Budget model, now calculated from transactions
 
     res.status(201).json(transaction);
   } catch (error) {
@@ -59,26 +54,7 @@ router.delete("/:id", async (req, res) => {
     if (!transaction)
       return res.status(404).json({ error: "Transaction not found" });
 
-    // Recalculate budget spent if transaction was linked to a budget
-    if (transaction.budgetId && !transaction.isIncome) {
-      // Find all other transactions for this budget
-      const otherTransactions = await Transaction.find({
-        budgetId: transaction.budgetId,
-        isIncome: false,
-        _id: { $ne: transaction._id },
-      });
-
-      // Calculate new total spent
-      const newSpent = otherTransactions.reduce(
-        (sum, txn) => sum + txn.amount,
-        0
-      );
-
-      // Update budget with new spent amount
-      await Budget.findByIdAndUpdate(transaction.budgetId, {
-        spent: newSpent,
-      });
-    }
+    // Note: spent field removed from Budget model, now calculated from transactions
 
     res.json({ message: "Transaction deleted successfully" });
   } catch (error) {

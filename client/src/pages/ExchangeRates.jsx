@@ -44,14 +44,7 @@ const ExchangeRates = () => {
           <div className="row g-3 align-items-end">
             <div className="col-md-4">
               <label className="form-label fw-semibold">Base currency</label>
-              <input
-                className="form-control"
-                value={base}
-                onChange={(event) => setBase(event.target.value.toUpperCase())}
-                maxLength={3}
-                placeholder="USD"
-                style={{ textTransform: "uppercase" }}
-              />
+              <p>{base}</p>
             </div>
             <div className="col-md-4">
               <button
@@ -159,7 +152,9 @@ const ExchangeRates = () => {
                       <p className="text-muted small mb-1">
                         {code} / {base}
                       </p>
-                      <h4 className="fw-bold mb-0">{formatRate(rates[code])}</h4>
+                      <h4 className="fw-bold mb-0">
+                        {formatRate(rates[code])}
+                      </h4>
                     </div>
                   </div>
                 </div>
@@ -211,7 +206,9 @@ const ExchangeRates = () => {
                             {code} per {base}
                           </span>
                         </td>
-                        <td className="text-end fw-semibold">{formatRate(rate)}</td>
+                        <td className="text-end fw-semibold">
+                          {formatRate(rate)}
+                        </td>
                       </tr>
                     ))}
                 </tbody>
