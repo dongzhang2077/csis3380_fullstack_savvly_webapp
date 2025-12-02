@@ -1,33 +1,115 @@
-PROJECT OVERVIEW
---------------
-Savvly is a full-stack personal finance management application that helps users track budgets, manage transactions, and make informed financial decisions. The application demonstrates integration of MongoDB, Express.js, React, and Node.js (MERN stack).
+# Savvly - Personal Finance Management System
 
-FOLDER STRUCTURE
---------------
+A comprehensive MERN stack application for budget tracking and transaction management with real-time spending calculations.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- MongoDB Atlas account
+- Modern web browser
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/dongzhang2077/csis3380_fullstack_savvly_webapp.git
+cd savvly-app
+
+# Install dependencies
+cd server && npm install
+cd client && npm install
+
+# Configure environment
+cp server/.env.example server/.env
+# Edit .env with your MongoDB Atlas connection string
+
+# Start the application
+npm run dev          # Starts both server (port 5000) and client (port 3000)
+```
+
+## 📁 Features
+
+### Core Functionality
+- **User Authentication**: Registration, login, JWT-based session management
+- **Budget Management**: Create, view, update, delete budgets with rollover types
+- **Transaction Tracking**: Add income/expense transactions with budget association
+- **Real-time Dashboard**: Spending metrics calculated from actual transaction data
+- **Exchange Rates**: Live currency conversion with base currency selection
+
+### Technical Implementation
+- **Frontend**: React 19.2 with hooks, routing, Bootstrap 5 styling
+- **Backend**: Node.js/Express with MongoDB/Mongoose ODM
+- **Database**: MongoDB Atlas with proper relationship design
+- **API**: RESTful endpoints with JWT authentication
+
+## 🎯 Budget-Transaction Relationship
+
+### Recent Enhancement
+- **Foreign Key Relationship**: Transaction model includes `budgetId` field referencing Budget
+- **Transaction-Driven Calculations**: All spending metrics derived from actual transaction data
+- **Eliminated Data Duplication**: Removed redundant `spent` field from Budget model
+- **Enhanced User Experience**: Budget selection dropdown in transaction form
+
+### Database Schema
+```javascript
+// Budget Model
+{
+  userId: String,
+  category: String,
+  amount: Number,
+  month: Number,
+  year: Number,
+  rolloverType: String,
+  notes: String
+}
+
+// Transaction Model
+{
+  userId: String,
+  description: String,
+  category: String,
+  amount: Number,
+  isIncome: Boolean,
+  date: Date,
+  notes: String,
+  budgetId: { type: ObjectId, ref: 'Budget' }
+}
+```
+
+## 📊 Project Structure
+
+```
 CSIS3380-Project/
-├── client/                 # React Front-End (CRA)
-│   ├── src/
-│   │   ├── pages/         # All page components
-│   │   ├── services/      # API client services
-│   │   ├── App.jsx        # Main app with routing
-│   │   └── index.css      # Global styles with Savvly palette
-│   └── package.json
-├── server/                 # Express/Node Back-End
-│   ├── routes/            # API route handlers
-│   │   ├── auth.js       # Authentication routes
-│   │   ├── budgets.js    # Budget CRUD routes
-│   │   └── transactions.js # Transaction CRUD routes
-│   ├── models/            # Mongoose schemas
-│   │   ├── User.js
-│   │   ├── Budget.js
-│   │   └── Transaction.js
-│   ├── config/            # Database configuration
-│   ├── middleware/        # Auth middleware
-│   ├── server.js          # Main server file (Port 5000)
-│   └── package.json
-└── data/                   # JSON seed data
-    ├── budgets.json       # 25+ budget documents
-    └── transactions.json  # 15+ transaction documents
+├── client/          # React frontend
+├── server/          # Node.js backend
+├── data/            # Seed data
+└── README.md
+```
+
+## 🛠️ Development
+
+### Available Scripts
+```bash
+npm start          # Start development servers
+npm run build        # Build for production
+npm test           # Run tests
+```
+
+### API Endpoints
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/budgets` - List budgets
+- `POST /api/budgets` - Create budget
+- `PUT /api/budgets/:id` - Update budget
+- `DELETE /api/budgets/:id` - Delete budget
+- `GET /api/transactions` - List transactions
+- `POST /api/transactions` - Create transaction
+- `DELETE /api/transactions/:id` - Delete transaction
+```
+
+## 📈 Project Status: ✅ Complete
+
+Last Updated: December 2, 2025
 
 TECHNOLOGY STACK
 --------------
