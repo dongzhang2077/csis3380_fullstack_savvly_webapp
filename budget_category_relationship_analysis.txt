@@ -12,10 +12,18 @@
 // server/models/Budget.js
 const budgetSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
-  category: { type: String, required: true, trim: true },  // 类别名称
+  categoryId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Category', 
+    required: true 
+  },  // 替代category字段
   amount: { type: Number, required: true, min: 0 },
-  // ...
-});
+  spent: { type: Number, default: 0, min: 0 },
+  month: { type: Number, required: true, min: 1, max: 12 },
+  year: { type: Number, required: true, min: 2000 },
+  rolloverType: { type: String, enum: ["full", "partial", "none", "goal"], default: "full" },
+  notes: String,
+}, { timestamps: true });
 ```
 
 **Transaction模型**：
@@ -24,11 +32,16 @@ const budgetSchema = new mongoose.Schema({
 const transactionSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   description: { type: String, required: true, trim: true, maxlength: 120 },
-  category: { type: String, required: true, trim: true },  // 类别名称
+  categoryId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Category', 
+    required: true 
+  },  // 替代category字段
   amount: { type: Number, required: true },
   isIncome: { type: Boolean, default: false },
-  // ...
-});
+  date: { type: Date, default: Date.now },
+  notes: String,
+}, { timestamps: true });
 ```
 
 ### 1.2 关键问题：缺乏类别管理
@@ -208,6 +221,37 @@ router.post("/", async (req, res) => {
   }
 });
 
+// 更新类别
+router.put("/:id", async (req, res) => {
+  try {
+    const category = await Category.findByIdAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      req.body
+    );
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    res.json(category);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// 删除类别
+router.delete("/:id", async (req, res) => {
+  try {
+    const category = await Category.findOneAndDelete(
+      { _id: req.params.id, userId: req.user.id }
+    );
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete category" });
+  }
+});
+
 export default router;
 ```
 
@@ -261,7 +305,7 @@ router.get("/", async (req, res) => {
 
 ---
 
-## 5. 前端改进实现
+## 5. 改进的前端实现
 
 ### 5.1 Category管理组件
 
@@ -308,15 +352,16 @@ const Categories = () => {
 export default Categories;
 ```
 
-### 5.2 改进的BudgetForm组件
-
-**类别选择改进**：
+**改进的BudgetForm组件**：
 ```javascript
 // client/src/pages/BudgetForm.jsx - 改进设计
 import { useEffect, useState } from 'react';
-import { getCategories } from '../services/api';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createBudget, getBudgetById, updateBudget, getCategories } from '../services/api';
 
 const BudgetForm = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(getInitialForm);
 
@@ -330,16 +375,44 @@ const BudgetForm = () => {
       }
     };
     
-    if (isEdit) {
+    if (id) {
       loadCategories();
     }
-  }, [isEdit]);
+  }, [id]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const payload = {
+      ...form,
+      amount: Number(form.amount),
+      spent: Number(form.spent),
+      month: Number(form.month),
+      year: Number(form.year),
+      categoryId: form.categoryId  // 使用类别ID而非名称
+    };
+
+    try {
+      if (id) {
+        await updateBudget(id, payload);
+      } else {
+        await createBudget(payload);
+      }
+      navigate('/budgets');
+    } catch (err) {
+      setError(err.message || 'Failed to save budget');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="container py-4">
       <div className="card">
         <div className="card-body">
-          <h1>{isEdit ? 'Edit Budget' : 'New Budget'}</h1>
+          <h1>{id ? 'Edit Budget' : 'New Budget'}</h1>
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
               <div className="col-md-6">
@@ -367,45 +440,8 @@ const BudgetForm = () => {
     </div>
   );
 };
-```
 
-### 5.3 改进的Dashboard组件
-
-**按类别统计**：
-```javascript
-// client/src/pages/Dashboard.jsx - 改进设计
-const statsByCategory = useMemo(() => {
-  // 按类别分组统计
-  const categoryStats = {};
-  
-  budgets.forEach(budget => {
-    const category = budget.categoryId?.name || 'Uncategorized';
-    if (!categoryStats[category]) {
-      categoryStats[category] = {
-        budgeted: 0,
-        spent: 0,
-        transactions: 0
-      };
-    }
-    
-    categoryStats[category].budgeted += budget.amount;
-    categoryStats[category].spent += budget.spent;
-  });
-  
-  transactions.forEach(txn => {
-    const category = txn.categoryId?.name || 'Uncategorized';
-    if (categoryStats[category]) {
-      categoryStats[category].transactions += 1;
-      if (txn.isIncome) {
-        categoryStats[category].income += txn.amount;
-      } else {
-        categoryStats[category].expenses += txn.amount;
-      }
-    }
-  });
-  
-  return categoryStats;
-}, [budgets, transactions]);
+export default BudgetForm;
 ```
 
 ---
@@ -415,12 +451,7 @@ const statsByCategory = useMemo(() => {
 ### 6.1 现有数据处理
 
 ```javascript
-// server/scripts/migrateCategories.js - 数据迁移脚本
-import mongoose from 'mongoose';
-import Budget from '../models/Budget.js';
-import Transaction from '../models/Transaction.js';
-import Category from '../models/Category.js';
-
+// 数据迁移脚本
 const migrateCategories = async () => {
   console.log('Starting category migration...');
   
@@ -473,8 +504,6 @@ const migrateCategories = async () => {
   console.log('Migration completed successfully');
   process.exit(0);
 };
-
-migrateCategories();
 ```
 
 ---
@@ -491,15 +520,14 @@ migrateCategories();
 
 **预算创建改进**：
 - 从预定义类别中选择
-- 支持创建新类别
 - 显示类别图标和描述
 - 自动填充类别信息
+- 减少输入错误
 
 **交易记录改进**：
 - 从类别下拉菜单选择
-- 支持快速类别切换
-- 显示类别图标和颜色
-- 按类别筛选和统计
+- 显示交易所属类别的图标
+- 支持按类别筛选交易
 
 ---
 
@@ -508,19 +536,17 @@ migrateCategories();
 ### 8.1 展示当前问题
 1. **创建预算**：
    - 手动输入类别名称
-   - 容易拼写错误
-   - 无法确保一致性
+   - 说明容易出错和数据不一致
 
 2. **创建交易**：
    - 手动输入类别名称
    - 与预算类别可能不匹配
-   - 统计不准确
 
 ### 8.2 展示改进方案
 1. **类别管理**：
    - 统一的类别选择界面
    - 类别图标和颜色
-   - 类别使用统计
+   - 按类别统计功能
 
 2. **数据一致性**：
    - 预算和交易共享类别引用
@@ -540,7 +566,7 @@ migrateCategories();
 
 **当前限制**：
 1. Budget和Transaction中的category字段独立
-2. 缺乏统一的类别管理
+2. 缺乏统一的类别管理系统
 3. 用户需要手动输入类别名称
 4. 数据一致性难以保证
 

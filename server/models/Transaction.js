@@ -31,6 +31,10 @@ const transactionSchema = new mongoose.Schema(
       default: Date.now,
     },
     notes: String,
+    budgetId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Budget",
+    },
   },
   {
     timestamps: true,

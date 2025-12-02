@@ -13,10 +13,27 @@ const Dashboard = () => {
       try {
         const [budgetData, transactionData] = await Promise.all([
           getBudgets(),
-          getTransactions({ limit: 5 }),
+          getTransactions({ limit: 100 }), // Get more transactions for accurate calculation
         ]);
-        setBudgets(budgetData);
-        setTransactions(transactionData);
+
+        // Calculate actual spent for each budget from transactions
+        const budgetsWithActualSpent = budgetData.map((budget) => {
+          const budgetTransactions = transactionData.filter(
+            (txn) => txn.budgetId === budget._id && !txn.isIncome
+          );
+          const actualSpent = budgetTransactions.reduce(
+            (sum, txn) => sum + txn.amount,
+            0
+          );
+
+          return {
+            ...budget,
+            actualSpent,
+          };
+        });
+
+        setBudgets(budgetsWithActualSpent);
+        setTransactions(transactionData.slice(0, 5)); // Keep only 5 for display
       } catch (err) {
         setError(err.message || "Failed to load dashboard data");
       } finally {
@@ -31,17 +48,22 @@ const Dashboard = () => {
       fetchData();
     };
 
-    window.addEventListener('transactionDeleted', handleTransactionChange);
+    window.addEventListener("transactionDeleted", handleTransactionChange);
+    window.addEventListener("transactionAdded", handleTransactionChange);
     return () => {
-      window.removeEventListener('transactionDeleted', handleTransactionChange);
+      window.removeEventListener("transactionDeleted", handleTransactionChange);
+      window.removeEventListener("transactionAdded", handleTransactionChange);
     };
   }, []);
 
   const stats = useMemo(() => {
     const totalBudgeted = budgets.reduce((sum, item) => sum + item.amount, 0);
-    const totalSpent = budgets.reduce((sum, item) => sum + item.spent, 0);
+    const totalSpent = budgets.reduce(
+      (sum, item) => sum + (item.actualSpent || 0),
+      0
+    );
     const overspentCount = budgets.filter(
-      (item) => item.spent > item.amount
+      (item) => (item.actualSpent || 0) > item.amount
     ).length;
 
     const inflow = transactions
@@ -75,7 +97,9 @@ const Dashboard = () => {
       </div>
     );
 
-  const overspentBudgets = budgets.filter((item) => item.spent > item.amount);
+  const overspentBudgets = budgets.filter(
+    (item) => (item.actualSpent || 0) > item.amount
+  );
 
   return (
     <section className="dashboard-page">
@@ -317,8 +341,9 @@ const Dashboard = () => {
                 </thead>
                 <tbody>
                   {overspentBudgets.map((item) => {
+                    const actualSpent = item.actualSpent || 0;
                     const percentage = Math.min(
-                      (item.spent / item.amount) * 100,
+                      (actualSpent / item.amount) * 100,
                       100
                     );
                     return (
@@ -348,11 +373,11 @@ const Dashboard = () => {
                         </td>
                         <td className="text-end">${item.amount.toFixed(2)}</td>
                         <td className="text-end fw-semibold text-danger">
-                          ${item.spent.toFixed(2)}
+                          ${actualSpent.toFixed(2)}
                         </td>
                         <td className="text-end">
                           <span className="badge bg-danger">
-                            ${(item.spent - item.amount).toFixed(2)}
+                            ${(actualSpent - item.amount).toFixed(2)}
                           </span>
                         </td>
                         <td className="text-center">

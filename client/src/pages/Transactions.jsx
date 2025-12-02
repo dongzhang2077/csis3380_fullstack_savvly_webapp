@@ -3,6 +3,7 @@ import {
   createTransaction,
   deleteTransaction,
   getTransactions,
+  getBudgets,
 } from "../services/api";
 
 const getInitialForm = () => ({
@@ -12,12 +13,14 @@ const getInitialForm = () => ({
   date: new Date().toISOString().split("T")[0],
   isIncome: false,
   notes: "",
+  budgetId: "",
 });
 
 const formatCurrency = (value) => `$${Number(value).toFixed(2)}`;
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [form, setForm] = useState(getInitialForm);
   const [limit, setLimit] = useState(25);
   const [loading, setLoading] = useState(false);
@@ -39,8 +42,20 @@ const Transactions = () => {
 
   useEffect(() => {
     loadTransactions(limit);
+    loadBudgets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [limit]);
+
+  const loadBudgets = async () => {
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const data = await getBudgets({ month: currentMonth, year: currentYear });
+      setBudgets(data);
+    } catch (err) {
+      console.error("Failed to load budgets:", err);
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -59,10 +74,13 @@ const Transactions = () => {
       const payload = {
         ...form,
         amount: Number(form.amount),
+        budgetId: form.budgetId || null,
       };
       const created = await createTransaction(payload);
       setTransactions((prev) => [created, ...prev]);
       setForm(getInitialForm());
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new CustomEvent("transactionAdded"));
     } catch (err) {
       setError(err.message || "Failed to add transaction");
     } finally {
@@ -77,7 +95,7 @@ const Transactions = () => {
       await deleteTransaction(id);
       setTransactions((prev) => prev.filter((txn) => txn._id !== id));
       // Trigger a custom event to notify other components
-      window.dispatchEvent(new CustomEvent('transactionDeleted'));
+      window.dispatchEvent(new CustomEvent("transactionDeleted"));
     } catch (err) {
       setError(err.message || "Failed to delete transaction");
     }
@@ -119,7 +137,30 @@ const Transactions = () => {
                 />
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-6">
+                <label className="form-label">Budget (Optional)</label>
+                <select
+                  name="budgetId"
+                  className="form-select"
+                  value={form.budgetId}
+                  onChange={handleChange}
+                  disabled={form.isIncome}
+                >
+                  <option value="">Select a budget</option>
+                  {budgets.map((budget) => (
+                    <option key={budget._id} value={budget._id}>
+                      {budget.category} - ${budget.amount.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+                {form.isIncome && (
+                  <small className="text-muted">
+                    Budget selection not available for income
+                  </small>
+                )}
+              </div>
+
+              <div className="col-md-6">
                 <label className="form-label">Amount</label>
                 <div className="input-group">
                   <span className="input-group-text">$</span>
@@ -136,7 +177,7 @@ const Transactions = () => {
                 </div>
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-6">
                 <label className="form-label">Date</label>
                 <input
                   name="date"
@@ -147,7 +188,7 @@ const Transactions = () => {
                 />
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-6">
                 <label className="form-label">Type</label>
                 <div className="form-check form-switch mt-2">
                   <input
@@ -280,7 +321,11 @@ const Transactions = () => {
                         </span>
                       </td>
                       <td className="text-end fw-semibold">
-                        <span className={txn.isIncome ? "text-success" : "text-dark"}>
+                        <span
+                          className={
+                            txn.isIncome ? "text-success" : "text-dark"
+                          }
+                        >
                           {formatCurrency(txn.amount)}
                         </span>
                       </td>
